@@ -11,6 +11,7 @@ version = "0.0.1-SNAPSHOT"
 description = "Full-day basketball betting training repository"
 
 extra["springCloudVersion"] = "2025.1.1"
+extra["solaceSpringCloudVersion"] = "6.0.0"
 
 springBoot {
 	mainClass = "com.hkjc.training.betting.BasketballBettingDemoApplicationKt"
@@ -28,6 +29,7 @@ repositories {
 dependencyManagement {
 	imports {
 		mavenBom("org.springframework.cloud:spring-cloud-dependencies:${property("springCloudVersion")}")
+		mavenBom("com.solace.spring.cloud:solace-spring-cloud-bom:${property("solaceSpringCloudVersion")}")
 	}
 }
 
@@ -38,6 +40,8 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-jdbc")
+	implementation("org.springframework.cloud:spring-cloud-stream")
+	implementation("com.solace.spring.cloud:spring-cloud-starter-stream-solace")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.10.2")

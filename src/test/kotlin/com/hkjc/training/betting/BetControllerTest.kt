@@ -1,5 +1,6 @@
 package com.hkjc.training.betting
 
+import com.hkjc.training.betting.messaging.InMemoryBetPlacedPublisher
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -9,12 +10,14 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import kotlin.test.assertEquals
 
 /**
  * Every POST /api/v1/bets scenario that the controller itself decides: accepted bets,
- * domain failures, and the stable error contract.
+ * domain failures, the stable error contract, and the published event.
  *
  * Authentication and authorization are deliberately absent. The filter chain rejects those
  * requests before this controller is reached, so they belong to [SecurityApiTest].
@@ -24,6 +27,9 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 class BetControllerTest {
     @Autowired
     lateinit var mockMvc: MockMvc
+
+    @Autowired
+    lateinit var publisher: InMemoryBetPlacedPublisher
 
     @Test
     fun `HOME returns 201 with fixed odds and ACCEPTED status`() {
@@ -62,6 +68,23 @@ class BetControllerTest {
             .andExpect(jsonPath("$.path").value("/api/v1/bets"))
             .andExpect(jsonPath("$.traceId").value("demo-trace-404"))
             .andExpect(jsonPath("$.timestamp").exists())
+    }
+
+    @Test
+    fun `accepted bet publishes BetPlaced with correlation identifiers`() {
+        val before = publisher.publishedEvents().size
+
+        mockMvc
+            .performSuspending(placeBet(traceId = "module2-trace-123"))
+            .andExpect(status().isCreated)
+            // Correlation travels in the transport, not the payload: the API echoes the
+            // caller's trace identifier and the publisher forwards it as a message header.
+            .andExpect(header().string("X-Trace-Id", "module2-trace-123"))
+
+        val event = publisher.publishedEvents().drop(before).single()
+        assertEquals("BetPlaced", event.eventType)
+        assertEquals(2, event.eventVersion)
+        assertEquals("G-100", event.data.gameId)
     }
 
     private fun placeBet(

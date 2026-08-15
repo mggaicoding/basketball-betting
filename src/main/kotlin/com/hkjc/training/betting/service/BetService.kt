@@ -8,6 +8,9 @@ import com.hkjc.training.betting.domain.Bet
 import com.hkjc.training.betting.dto.BetResponse
 import com.hkjc.training.betting.dto.PlaceBetRequest
 import com.hkjc.training.betting.exception.InvalidBetException
+import com.hkjc.training.betting.messaging.BetPlacedData
+import com.hkjc.training.betting.messaging.BetPlacedEvent
+import com.hkjc.training.betting.messaging.BetPlacedPublisher
 import com.hkjc.training.betting.repository.BetRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -15,12 +18,15 @@ import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
 import java.time.Clock
 import java.time.Instant
+import java.util.UUID
 
 @Service
 class BetService(
     private val betRepository: BetRepository,
+    private val publisher: BetPlacedPublisher,
     private val oddsClient: OddsClient,
     private val riskClient: RiskClient,
     private val clock: Clock,
@@ -34,6 +40,7 @@ class BetService(
     ): BetResponse = withContext(MDCContext()) {
         val validatedOdds = validateBet(request, customerId)
         val bet = saveBet(request, validatedOdds)
+        publishBetPlacedEvent(bet)
 
         BetResponse(
             betId = bet.id,
@@ -107,5 +114,22 @@ class BetService(
             savedBet.odds,
         )
         return savedBet
+    }
+
+    private fun publishBetPlacedEvent(bet: Bet) {
+        publisher.publish(
+            BetPlacedEvent(
+                eventId = UUID.randomUUID().toString(),
+                occurredAt = Instant.now(clock),
+                data =
+                    BetPlacedData(
+                        betId = bet.id,
+                        gameId = bet.gameId,
+                        selection = bet.selection,
+                        stake = bet.stake,
+                        odds = bet.odds,
+                    ),
+            ),
+        )
     }
 }
