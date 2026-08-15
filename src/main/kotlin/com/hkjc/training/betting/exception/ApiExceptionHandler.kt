@@ -12,6 +12,20 @@ import java.time.Instant
 
 @RestControllerAdvice
 class ApiExceptionHandler : ResponseEntityExceptionHandler() {
+    // === Demo TDD · step 3 (green) — uncomment to turn the 500 into the agreed 400 ===
+    // @ExceptionHandler(InvalidBetException::class)
+    // fun handleInvalidBet(
+    //     exception: InvalidBetException,
+    //     request: HttpServletRequest,
+    // ): ResponseEntity<ApiError> =
+    //     errorResponse(
+    //         status = HttpStatus.BAD_REQUEST,
+    //         code = "INVALID_BET",
+    //         message = exception.message ?: "Bet is invalid",
+    //         request = request,
+    //     )
+    // === end ===
+
     @ExceptionHandler(GameNotFoundException::class)
     fun handleGameNotFound(
         exception: GameNotFoundException,

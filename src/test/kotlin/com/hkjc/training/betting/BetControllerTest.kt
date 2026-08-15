@@ -87,6 +87,19 @@ class BetControllerTest {
         assertEquals("G-100", event.data.gameId)
     }
 
+    // === Demo TDD · step 1 (red) — uncomment this test and watch it fail ===
+    // New rule: a single stake must not exceed 1000; above it the API answers 400 INVALID_BET.
+    // No production code changes yet, so the red reads `expected:<400> but was:<201>` — the
+    // current code still accepts the bet, which is exactly the behaviour we want to remove.
+    // @Test
+    // fun `stake above 1000 is rejected with INVALID_BET`() {
+    //     mockMvc
+    //         .performSuspending(placeBet(stake = "1001"))
+    //         .andExpect(status().isBadRequest)
+    //         .andExpect(jsonPath("$.code").value("INVALID_BET"))
+    // }
+    // === end ===
+
     private fun placeBet(
         gameId: String = "G-100",
         selection: String = "HOME",

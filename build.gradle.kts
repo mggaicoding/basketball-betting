@@ -66,6 +66,7 @@ dependencies {
 	testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 	testImplementation("io.kotest:kotest-runner-junit5:6.2.3")
 	testImplementation("io.kotest:kotest-assertions-core:6.2.3")
+	testImplementation("io.mockk:mockk:1.14.11")
 	testImplementation("org.springframework.security:spring-security-test")
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
 	testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
@@ -121,6 +122,24 @@ tasks.register<JavaExec>("runDemoDownstreams") {
 	mainClass = "com.hkjc.training.betting.demo.DemoDownstreamServicesKt"
 }
 
+val pactVersion = "4.6.21"
+
+val contractTestSourceSet =
+	sourceSets.create("contractTest") {
+		compileClasspath += sourceSets.main.get().output
+		runtimeClasspath += sourceSets.main.get().output
+	}
+
+configurations[contractTestSourceSet.implementationConfigurationName]
+	.extendsFrom(configurations.testImplementation.get())
+configurations[contractTestSourceSet.runtimeOnlyConfigurationName]
+	.extendsFrom(configurations.testRuntimeOnly.get())
+
+dependencies {
+	"contractTestImplementation"("au.com.dius.pact.consumer:junit5:$pactVersion")
+	"contractTestImplementation"("au.com.dius.pact.provider:junit5spring:$pactVersion")
+}
+
 val integrationTestSourceSet =
 	sourceSets.create("integrationTest") {
 		// A new source set does not inherit the main output, so @SpringBootTest would fail
@@ -160,4 +179,129 @@ tasks.register<Sync>("slimDist") {
 	from(thinJar) { into("app") }
 	from(configurations.runtimeClasspath) { into("lib") }
 	from("src/distribution/bin") { into("bin") }
+}
+
+val pactDir = layout.buildDirectory.dir("pacts").get().asFile.absolutePath
+
+/**
+ * Consumer half: declares the expectations, drives real client code against Pact's mock server,
+ * and writes the contracts to build/pacts.
+ */
+val pactConsumerTest by tasks.registering(Test::class) {
+	description = "Generates the consumer contracts"
+	group = "contract"
+	testClassesDirs = contractTestSourceSet.output.classesDirs
+	classpath = contractTestSourceSet.runtimeClasspath
+	useJUnitPlatform()
+	filter { includeTestsMatching("*ConsumerPactTest") }
+	systemProperty("pact.rootDir", pactDir)
+}
+
+/**
+ * Provider half: replays the contracts in build/pacts against this service. Split from the
+ * consumer task so the ordering is declared rather than inherited from however JUnit happens to
+ * sort the class names.
+ */
+val pactProviderTest by tasks.registering(Test::class) {
+	description = "Verifies the contracts in build/pacts against this provider"
+	group = "contract"
+	dependsOn(pactConsumerTest)
+	testClassesDirs = contractTestSourceSet.output.classesDirs
+	classpath = contractTestSourceSet.runtimeClasspath
+	useJUnitPlatform()
+	// The broker-sourced classes need credentials; they belong to pactBrokerVerify.
+	filter {
+		includeTestsMatching("*ProviderPactTest")
+		excludeTestsMatching("*BrokerPactTest")
+	}
+	systemProperty("pact.rootDir", pactDir)
+}
+
+val contractTest by tasks.registering {
+	description = "Runs the whole local contract loop: generate, then verify"
+	group = "verification"
+	dependsOn(pactConsumerTest, pactProviderTest)
+	shouldRunAfter(tasks.test)
+}
+
+/**
+ * Pulls both contracts from PactFlow, verifies them, and publishes the results under this
+ * provider version. Only results published this way appear in the Matrix, which is what
+ * `can-i-deploy` reads.
+ */
+tasks.register<Test>("pactBrokerVerify") {
+	group = "contract"
+	description = "Verifies the PactFlow contracts and publishes the results"
+	testClassesDirs = contractTestSourceSet.output.classesDirs
+	classpath = contractTestSourceSet.runtimeClasspath
+	useJUnitPlatform()
+	filter { includeTestsMatching("*BrokerPactTest") }
+
+	val brokerUrl = providers.environmentVariable("PACT_BROKER_BASE_URL").orElse("")
+	val brokerToken = providers.environmentVariable("PACT_BROKER_TOKEN").orElse("")
+	val gitCommit = providers.environmentVariable("GIT_COMMIT").orElse("local")
+	val gitBranch = providers.environmentVariable("GIT_BRANCH").orElse("local")
+	doFirst {
+		require(brokerUrl.get().isNotBlank()) { "PACT_BROKER_BASE_URL is not set" }
+		require(brokerToken.get().isNotBlank()) { "PACT_BROKER_TOKEN is not set" }
+	}
+	systemProperty("pactbroker.url", brokerUrl.get())
+	systemProperty("pactbroker.auth.token", brokerToken.get())
+	systemProperty("pact.provider.version", gitCommit.get())
+	systemProperty("pact.provider.branch", gitBranch.get())
+	systemProperty("pact.verifier.publishResults", "true")
+}
+
+/**
+ * Publishes both contracts to PactFlow. The version must be an immutable commit sha: `latest`
+ * is not a version, and the Matrix can only reason about versions it can pin down.
+ */
+tasks.register<Exec>("pactPublish") {
+	group = "contract"
+	description = "Publishes the generated contracts to PactFlow"
+	dependsOn(contractTest)
+	// providers.environmentVariable, not System.getenv: the latter reads the environment the
+	// Gradle daemon was started with, so an exported value from the current shell is ignored.
+	val brokerUrl = providers.environmentVariable("PACT_BROKER_BASE_URL").orElse("")
+	val brokerToken = providers.environmentVariable("PACT_BROKER_TOKEN").orElse("")
+	val gitCommit = providers.environmentVariable("GIT_COMMIT").orElse("local")
+	val gitBranch = providers.environmentVariable("GIT_BRANCH").orElse("local")
+	doFirst {
+		require(brokerUrl.get().isNotBlank()) { "PACT_BROKER_BASE_URL is not set" }
+		require(brokerToken.get().isNotBlank()) { "PACT_BROKER_TOKEN is not set" }
+	}
+	commandLine(
+		// The package exposes a `pact-broker` executable; `npx <package>` cannot find an
+		// entry point on its own, so name the binary with -p.
+		"npx", "--yes", "-p", "@pact-foundation/pact-cli@18.1.1", "pact-broker", "publish", pactDir,
+		"--consumer-app-version", gitCommit.get(),
+		"--branch", gitBranch.get(),
+		"--broker-base-url", brokerUrl.get(),
+		"--broker-token", brokerToken.get(),
+	)
+}
+
+/**
+ * Asks PactFlow whether this provider version is compatible with the consumer versions already
+ * deployed to the target environment. A missing verification answers "no" — that is the point.
+ */
+tasks.register<Exec>("canIDeploy") {
+	group = "contract"
+	description = "Checks the PactFlow matrix before promoting this version"
+	val brokerUrl = providers.environmentVariable("PACT_BROKER_BASE_URL").orElse("")
+	val brokerToken = providers.environmentVariable("PACT_BROKER_TOKEN").orElse("")
+	val gitCommit = providers.environmentVariable("GIT_COMMIT").orElse("local")
+	val environment = providers.environmentVariable("PACT_ENVIRONMENT").orElse("test")
+	doFirst {
+		require(brokerUrl.get().isNotBlank()) { "PACT_BROKER_BASE_URL is not set" }
+		require(brokerToken.get().isNotBlank()) { "PACT_BROKER_TOKEN is not set" }
+	}
+	commandLine(
+		"npx", "--yes", "-p", "@pact-foundation/pact-cli@18.1.1", "pact-broker", "can-i-deploy",
+		"--pacticipant", "betting-api",
+		"--version", gitCommit.get(),
+		"--to-environment", environment.get(),
+		"--broker-base-url", brokerUrl.get(),
+		"--broker-token", brokerToken.get(),
+	)
 }

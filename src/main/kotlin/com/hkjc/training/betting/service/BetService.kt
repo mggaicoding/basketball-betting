@@ -58,6 +58,15 @@ class BetService(
         request: PlaceBetRequest,
         customerId: String,
     ): ValidatedOdds {
+        // === Demo TDD · step 2 (still red) — uncomment the rule; the red moves from 201 to 500 ===
+        // The rule is enforced before any I/O: an over-limit bet must not pay for the Odds
+        // and Risk round trips. Nothing maps InvalidBetException yet, so the fallback
+        // handler answers 500 — correct logic is not yet the agreed contract.
+        // if (request.stake > BigDecimal("1000")) {
+        //     throw InvalidBetException("Stake must not exceed 1000")
+        // }
+        // === end ===
+
         val (validatedOdds, riskAssessment) =
             coroutineScope {
                 val odds = async { validateOdds(request) }
