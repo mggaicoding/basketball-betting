@@ -1,0 +1,213 @@
+{
+  "info": {
+    "name": "HKJC",
+    "description": null,
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Place Bet",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          },
+          {
+            "key": "X-Trace-Id",
+            "value": "trace-demo-0001",
+            "description": "",
+            "disabled": true,
+            "type": "default"
+          },
+          {
+            "key": "X-Customer-Id",
+            "value": "123",
+            "description": "",
+            "disabled": false,
+            "type": "default"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": {
+            "key": "token",
+            "value": "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJoa2pjLXRyYWluaW5nLWxvY2FsIiwic3ViIjoibW9kdWxlLTEtaGVscGVyIiwiZXhwIjoxNzg2ODEwNTU1LCJpYXQiOjE3ODY3MjQxNTUsInNjb3BlIjoiYmV0czp3cml0ZSJ9.dxJhdt5XD5ix1MZ-UPIU9y2eX-cKnFnD7vPQ5k38D5o",
+            "type": "string"
+          }
+        },
+        "description": "",
+        "url": {
+          "raw": "http://localhost:8080/api/v1/bets",
+          "protocol": "http",
+          "host": [
+            "localhost:8080"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "bets"
+          ],
+          "query": [],
+          "variable": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"gameId\": \"G-100\",\n  \"selection\": \"AWAY\",\n  \"stake\": 166\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Query Games",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": {
+            "key": "token",
+            "value": "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJoa2pjLXRyYWluaW5nLWxvY2FsIiwic3ViIjoibW9kdWxlLTEtaGVscGVyIiwiZXhwIjoxNzg2NTEyMjQ5LCJpYXQiOjE3ODY1MDg2NDksInNjb3BlIjoiZ2FtZXM6cmVhZCJ9.Kc2WkArOfDUhmuGCixh51u6XEEvkN48Xrdd5AWJWmUA",
+            "type": "string"
+          }
+        },
+        "description": "",
+        "url": {
+          "raw": "http://localhost:8080/api/v1/games/:gameId",
+          "protocol": "http",
+          "host": [
+            "localhost:8080"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "games",
+            ":gameId"
+          ],
+          "query": [],
+          "variable": [
+            {
+              "key": "gameId",
+              "value": "G-100"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Actuator Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "http://localhost:8080/actuator/health",
+          "protocol": "http",
+          "host": [
+            "localhost:8080"
+          ],
+          "path": [
+            "actuator",
+            "health"
+          ],
+          "query": [],
+          "variable": []
+        }
+      }
+    },
+    {
+      "name": "Actuator Metrics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "http://localhost:8080/actuator/metrics",
+          "protocol": "http",
+          "host": [
+            "localhost:8080"
+          ],
+          "path": [
+            "actuator",
+            "metrics"
+          ],
+          "query": [],
+          "variable": []
+        }
+      }
+    },
+    {
+      "name": "Actuator Prometheus",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "http://localhost:8080/actuator/prometheus",
+          "protocol": "http",
+          "host": [
+            "localhost:8080"
+          ],
+          "path": [
+            "actuator",
+            "prometheus"
+          ],
+          "query": [],
+          "variable": []
+        }
+      }
+    },
+    {
+      "name": "Swagger",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "",
+        "url": {
+          "raw": "http://localhost:8080/v3/api-docs",
+          "protocol": "http",
+          "host": [
+            "localhost:8080"
+          ],
+          "path": [
+            "v3",
+            "api-docs"
+          ],
+          "query": [],
+          "variable": []
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

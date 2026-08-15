@@ -1,0 +1,49 @@
+@baseUrl = http://localhost:8080
+
+### 200 — supplied query with games:read
+GET {{baseUrl}}/api/v1/games/G-100
+Authorization: Bearer {{VALID_GAMES_READ_TOKEN}}
+
+### 401 — no token
+POST {{baseUrl}}/api/v1/bets
+Content-Type: application/json
+
+{
+  "gameId": "G-100",
+  "selection": "HOME",
+  "stake": 100
+}
+
+### 403 — valid token without bets:write
+POST {{baseUrl}}/api/v1/bets
+Authorization: Bearer {{VALID_NO_SCOPE_TOKEN}}
+Content-Type: application/json
+
+{
+  "gameId": "G-100",
+  "selection": "HOME",
+  "stake": 100
+}
+
+### 201 — valid token with bets:write
+POST {{baseUrl}}/api/v1/bets
+Authorization: Bearer {{VALID_BETS_WRITE_TOKEN}}
+Content-Type: application/json
+
+{
+  "gameId": "G-100",
+  "selection": "HOME",
+  "stake": 100
+}
+
+### 404 — same scoped token; only gameId changes
+POST {{baseUrl}}/api/v1/bets
+Authorization: Bearer {{VALID_BETS_WRITE_TOKEN}}
+X-Trace-Id: demo-trace-404
+Content-Type: application/json
+
+{
+  "gameId": "G-404",
+  "selection": "HOME",
+  "stake": 100
+}

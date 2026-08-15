@@ -1,0 +1,9 @@
+-- Demo: DB migration
+--
+-- Rename this file to V4__index_bet_by_game.sql and restart with the `database` profile.
+-- Flyway applies it on startup and appends one row to flyway_schema_history.
+--
+-- The point is what you must NOT do instead: reaching back into V2 to add the index there.
+-- V2 has already run everywhere, and Flyway stores its checksum. Editing it makes every
+-- environment that already applied it fail to start.
+create index if not exists idx_bet_game_id on bet (game_id);

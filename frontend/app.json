@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Basketball Betting Training",
+    "slug": "basketball-betting-training",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
