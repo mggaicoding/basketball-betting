@@ -1169,7 +1169,7 @@ while (($#)); do
 		--demo) DEMOS+=("$2"); shift 2 ;;
 		--demo=*) DEMOS+=("${1#--demo=}"); shift ;;
 		--pactflow) PACTFLOW=1; shift ;;
-		-h | --help) usage; exit 0 ;;
+		-h | --help) usage; trap - EXIT; exit 0 ;;
 		*) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
 	esac
 done
