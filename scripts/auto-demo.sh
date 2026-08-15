@@ -160,10 +160,10 @@ wait_log() { # file, extended-regex, timeout -> 0 found / 1 not found
 wait_started() { # file, pid, timeout
 	local file=$1 pid=$2 timeout=$3 elapsed=0
 	while (( elapsed < timeout )); do
-		grep -Eq 'Started .*Application in ' "$file" 2>/dev/null && return 0
+		grep -Eq 'Started .* in [0-9.]+ seconds' "$file" 2>/dev/null && return 0
 		grep -q 'APPLICATION FAILED TO START' "$file" 2>/dev/null && return 1
 		if ! kill -0 "$pid" 2>/dev/null; then
-			grep -Eq 'Started .*Application in ' "$file" 2>/dev/null
+			grep -Eq 'Started .* in [0-9.]+ seconds' "$file" 2>/dev/null
 			return $?
 		fi
 		sleep 2; elapsed=$((elapsed + 2))
