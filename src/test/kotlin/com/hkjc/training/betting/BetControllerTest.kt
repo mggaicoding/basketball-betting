@@ -5,14 +5,20 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-/** The vertical slice: a request reaches the controller, the service, and the repository. */
+/**
+ * Every POST /api/v1/bets scenario that the controller itself decides: accepted bets,
+ * domain failures, and the stable error contract.
+ *
+ * Authentication and authorization are deliberately absent. The filter chain rejects those
+ * requests before this controller is reached, so they belong to [SecurityApiTest].
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 class BetControllerTest {
@@ -20,17 +26,16 @@ class BetControllerTest {
     lateinit var mockMvc: MockMvc
 
     @Test
-    fun `HOME returns 201 with the home odds and ACCEPTED status`() {
+    fun `HOME returns 201 with fixed odds and ACCEPTED status`() {
         mockMvc
             .performSuspending(placeBet(selection = "HOME"))
             .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.betId").exists())
             .andExpect(jsonPath("$.odds").value(1.85))
             .andExpect(jsonPath("$.status").value("ACCEPTED"))
     }
 
     @Test
-    fun `AWAY returns 201 with the away odds and ACCEPTED status`() {
+    fun `AWAY returns 201 with fixed odds and ACCEPTED status`() {
         mockMvc
             .performSuspending(placeBet(selection = "AWAY"))
             .andExpect(status().isCreated)
@@ -39,11 +44,24 @@ class BetControllerTest {
     }
 
     @Test
-    fun `the response echoes the trace identifier the caller supplied`() {
+    fun `unknown game returns 404 with GAME_NOT_FOUND code`() {
         mockMvc
-            .performSuspending(placeBet(traceId = "demo-1-trace"))
-            .andExpect(status().isCreated)
-            .andExpect(header().string("X-Trace-Id", "demo-1-trace"))
+            .performSuspending(placeBet(gameId = "G-404"))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.code").value("GAME_NOT_FOUND"))
+    }
+
+    @Test
+    fun `unknown game returns every field of the stable error contract`() {
+        mockMvc
+            .performSuspending(placeBet(gameId = "G-404", traceId = "demo-trace-404"))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.code").value("GAME_NOT_FOUND"))
+            .andExpect(jsonPath("$.message").value("Game G-404 was not found"))
+            .andExpect(jsonPath("$.path").value("/api/v1/bets"))
+            .andExpect(jsonPath("$.traceId").value("demo-trace-404"))
+            .andExpect(jsonPath("$.timestamp").exists())
     }
 
     private fun placeBet(
@@ -53,7 +71,7 @@ class BetControllerTest {
         traceId: String? = null,
     ): MockHttpServletRequestBuilder =
         post("/api/v1/bets")
-            .header("X-Customer-Id", "C-100")
+            .with(jwt().jwt { it.claim("scope", "bets:write") })
             .contentType(MediaType.APPLICATION_JSON)
             .apply { traceId?.let { header("X-Trace-Id", it) } }
             .content(

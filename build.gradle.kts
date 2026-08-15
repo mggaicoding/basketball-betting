@@ -34,6 +34,7 @@ dependencyManagement {
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
+	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-jdbc")
@@ -61,6 +62,7 @@ dependencies {
 	testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 	testImplementation("io.kotest:kotest-runner-junit5:6.2.3")
 	testImplementation("io.kotest:kotest-assertions-core:6.2.3")
+	testImplementation("org.springframework.security:spring-security-test")
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
 	testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
 	testImplementation("org.testcontainers:testcontainers-postgresql:2.0.5")
@@ -100,6 +102,13 @@ configurations[demoSourceSet.implementationConfigurationName]
 	.extendsFrom(configurations.implementation.get())
 configurations[demoSourceSet.runtimeOnlyConfigurationName]
 	.extendsFrom(configurations.runtimeOnly.get())
+
+tasks.register<JavaExec>("generateDemoTokens") {
+	group = "training"
+	description = "Prints short-lived local JWTs for the classroom HTTP demos"
+	classpath = demoSourceSet.runtimeClasspath
+	mainClass = "com.hkjc.training.betting.demo.DemoTokenGeneratorKt"
+}
 
 tasks.register<JavaExec>("runDemoDownstreams") {
 	group = "training"

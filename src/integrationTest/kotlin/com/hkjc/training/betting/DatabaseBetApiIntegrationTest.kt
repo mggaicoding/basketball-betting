@@ -7,6 +7,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.simple.JdbcClient
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
@@ -52,7 +53,8 @@ class DatabaseBetApiIntegrationTest {
     fun `Flyway schema and JDBC adapter persist an accepted bet`() {
         mockMvc
             .perform(
-                get("/api/v1/games/G-100"),
+                get("/api/v1/games/G-100")
+                    .with(jwt().jwt { it.claim("scope", "games:read") }),
             )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.homeTeam").value("Hong Kong Lions"))
@@ -64,7 +66,7 @@ class DatabaseBetApiIntegrationTest {
             mockMvc
                 .perform(
                     post("/api/v1/bets")
-                        .header("X-Customer-Id", "C-100")
+                        .with(jwt().jwt { it.claim("scope", "bets:write") })
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(
                             """
