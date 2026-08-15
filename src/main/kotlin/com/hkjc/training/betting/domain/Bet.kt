@@ -7,6 +7,7 @@ import java.time.Instant
 
 data class Bet(
     val id: String = "",
+    val customerId: String,
     val gameId: String,
     val selection: Selection,
     val stake: BigDecimal,

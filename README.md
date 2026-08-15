@@ -17,6 +17,9 @@ layout, packaging, Flyway migrations, profiles, and observability — exists fro
 
 The step-by-step classroom script is [`docs/demo-be.md`](docs/demo-be.md).
 
+The `demo-ai` branch extends `main` with the GitHub Copilot and spec-driven development
+session; its script is [`docs/demo-ai.md`](docs/demo-ai.md).
+
 ## Prerequisites
 
 - JDK 17

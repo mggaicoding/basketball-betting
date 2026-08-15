@@ -28,6 +28,7 @@ class InMemoryBetRepositoryTest :
 
 private fun bet() =
     Bet(
+        customerId = "C-100",
         gameId = "G-100",
         selection = Selection.HOME,
         stake = BigDecimal("100"),

@@ -20,14 +20,15 @@ class JdbcBetRepository(
                 .sql(
                     """
                     insert into bet (
-                        id, game_id, selection, stake, odds, status, created_at
+                        id, customer_id, game_id, selection, stake, odds, status, created_at
                     ) values (
-                        :id, :gameId, :selection, :stake, :odds, :status, :placedAt
+                        :id, :customerId, :gameId, :selection, :stake, :odds, :status, :placedAt
                     )
                     """.trimIndent(),
                 ).params(
                     mapOf(
                         "id" to stored.id,
+                        "customerId" to stored.customerId,
                         "gameId" to stored.gameId,
                         "selection" to stored.selection.name,
                         "stake" to stored.stake,

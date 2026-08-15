@@ -1,0 +1,43 @@
+schema: spec-driven
+githubCopilot:
+  cloudAgent: false
+
+context: |
+  Kotlin 2.3 / Spring Boot 4 betting API, backend only. There is a frontend in the
+  repository, but it is out of scope: every change here stops at the HTTP boundary.
+
+  Architecture is ports and adapters selected by Spring profile. An interface lives in
+  `repository/`, `messaging/` or `client/`, and each has an in-memory adapter and a real
+  one, so the service never knows which is attached. Packages are named after roles:
+  controller, service, repository, domain, enum, dto, client, messaging, configuration,
+  exception.
+
+  What exists today: POST /api/v1/bets places a bet, validating odds and customer risk
+  concurrently, persists it, and publishes a BetPlaced event. GET /api/v1/games/{gameId}
+  reads a game. A bet records its customer, game, selection, stake, odds, status and the
+  moment it was placed.
+
+  Constraints that shape any design here:
+  - Identity comes from the OAuth2 token subject, never from a body or a header.
+  - Every route needs its own rule in SecurityConfig; the chain ends in permitAll, so a
+    route without a rule is open to anyone.
+  - Errors are domain exceptions mapped in ApiExceptionHandler to an ApiError with a
+    stable code.
+  - Schema changes are new Flyway files under db/migration. An applied migration is
+    never edited.
+  - Time comes from the injected Clock so it stays assertable.
+  - Tests: Kotest + MockK for units, MockMvc for the API, Testcontainers for the
+    database boundary, Pact for contracts.
+
+rules:
+  proposal:
+    - State what the client can do afterwards that it cannot do today, in one sentence.
+    - Include a Non-goals section. Frontend work is always a non-goal.
+    - List the open questions that change the design, and answer them before tasks.
+  design:
+    - Name every file that changes, including the SecurityConfig rule and any migration.
+    - Say which data is exposed to whom. Never expose a customer identifier to a party
+      that is not that customer.
+  tasks:
+    - One task per file or per test, small enough to review in a single sitting.
+    - Every task that adds behaviour is followed by the task that tests it.

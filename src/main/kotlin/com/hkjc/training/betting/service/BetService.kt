@@ -39,7 +39,7 @@ class BetService(
         customerId: String,
     ): BetResponse = withContext(MDCContext()) {
         val validatedOdds = validateBet(request, customerId)
-        val bet = saveBet(request, validatedOdds)
+        val bet = saveBet(request, customerId, validatedOdds)
         publishBetPlacedEvent(bet)
 
         BetResponse(
@@ -101,11 +101,13 @@ class BetService(
 
     private fun saveBet(
         request: PlaceBetRequest,
+        customerId: String,
         validatedOdds: ValidatedOdds,
     ): Bet {
         val savedBet =
             betRepository.save(
                 Bet(
+                    customerId = customerId,
                     gameId = validatedOdds.game.id,
                     selection = request.selection,
                     stake = request.stake,
