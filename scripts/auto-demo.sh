@@ -126,6 +126,15 @@ record() { # scenario, PASS|FAIL|SKIP, detail
 
 port_open() { (echo >"/dev/tcp/127.0.0.1/$1") >/dev/null 2>&1; }
 
+wait_port_free() { # port, timeout -> 0 once nothing listens there
+	local port=$1 timeout=$2 elapsed=0
+	while (( elapsed < timeout )); do
+		port_open "$port" || return 0
+		sleep 1; elapsed=$((elapsed + 1))
+	done
+	return 1
+}
+
 wait_port() { # port, timeout
 	local port=$1 timeout=$2 elapsed=0
 	while (( elapsed < timeout )); do
@@ -183,11 +192,19 @@ print('"$1"')'
 # ---------------------------------------------------------------------------
 # process lifecycle
 # ---------------------------------------------------------------------------
-stop_pid_tree() { # pid, pkill -f marker
-	local pid=$1 marker=${2:-}
+stop_pid_tree() { # pid, pkill -f marker; returns only once both are gone
+	local pid=$1 marker=${2:-} i alive
 	[[ -n $pid ]] && kill "$pid" >/dev/null 2>&1
 	[[ -n $marker ]] && pkill -f "$marker" >/dev/null 2>&1
-	[[ -n $pid ]] && wait "$pid" >/dev/null 2>&1
+	for ((i = 0; i < 20; i++)); do
+		alive=0
+		[[ -n $pid ]] && kill -0 "$pid" 2>/dev/null && alive=1
+		[[ -n $marker ]] && pgrep -f "$marker" >/dev/null 2>&1 && alive=1
+		(( alive == 0 )) && return 0
+		sleep 1
+	done
+	[[ -n $pid ]] && kill -9 "$pid" >/dev/null 2>&1
+	[[ -n $marker ]] && pkill -9 -f "$marker" >/dev/null 2>&1
 	return 0
 }
 
@@ -220,6 +237,7 @@ stop_slim() {
 start_app() {
 	local key=$1 logfile=$2; shift 2
 	stop_app
+	wait_port_free 8080 30
 	if port_open 8080; then
 		warn "port 8080 is already in use by a foreign process; stop it before running the demos"
 		return 1
@@ -525,10 +543,19 @@ demo1() {
 	# warm-up bet (class loading / connection setup pollutes the first timing)
 	place_bet_insecure "G-100" "HOME" 10 >/dev/null
 
-	local timed elapsed
+	local timed
 	timed="$(curl -s -o /dev/null -w '%{time_total}' -X POST "$BASE_URL/api/v1/bets" \
 		-H 'X-Customer-Id: C-100' -H 'Content-Type: application/json' \
 		-d '{"gameId":"G-100","selection":"AWAY","stake":250}')"
+
+	# Gradle forwards the stubs' stdout asynchronously; wait until the timed
+	# bet's completed lines have actually landed in the log before judging order
+	local w=0
+	while (( w < 30 )); do
+		[[ $(grep -c 'ODDS  completed' "$DOWNSTREAM_LOG" 2>/dev/null) -ge 2 ]] \
+			&& [[ $(grep -c 'RISK  completed' "$DOWNSTREAM_LOG" 2>/dev/null) -ge 2 ]] && break
+		sleep 1; w=$((w + 1))
+	done
 
 	local timing_ok order_ok thread_ok
 	# doc: ~0.88 s == max(800,600)ms + overhead; 1.4 s would mean serial execution
