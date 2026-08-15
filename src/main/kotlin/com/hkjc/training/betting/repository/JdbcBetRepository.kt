@@ -1,9 +1,12 @@
 package com.hkjc.training.betting.repository
 
 import com.hkjc.training.betting.domain.Bet
+import com.hkjc.training.betting.enum.BetStatus
+import com.hkjc.training.betting.enum.Selection
 import org.springframework.context.annotation.Profile
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
+import java.sql.ResultSet
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -41,4 +44,29 @@ class JdbcBetRepository(
         check(inserted == 1) { "Expected one inserted bet but inserted $inserted" }
         return stored
     }
+
+    override fun findById(betId: String): Bet? =
+        jdbcClient
+            .sql(
+                """
+                select id, customer_id, game_id, selection, stake, odds, status, created_at
+                from bet
+                where id = :betId
+                """.trimIndent(),
+            ).param("betId", betId)
+            .query { rs, _ -> rs.toBet() }
+            .optional()
+            .orElse(null)
 }
+
+private fun ResultSet.toBet() =
+    Bet(
+        id = getString("id"),
+        customerId = getString("customer_id"),
+        gameId = getString("game_id"),
+        selection = Selection.valueOf(getString("selection")),
+        stake = getBigDecimal("stake"),
+        odds = getBigDecimal("odds"),
+        placedAt = getTimestamp("created_at").toInstant(),
+        status = BetStatus.valueOf(getString("status")),
+    )

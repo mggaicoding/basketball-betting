@@ -26,6 +26,18 @@ class ApiExceptionHandler : ResponseEntityExceptionHandler() {
     //     )
     // === end ===
 
+    @ExceptionHandler(BetNotFoundException::class)
+    fun handleBetNotFound(
+        exception: BetNotFoundException,
+        request: HttpServletRequest,
+    ): ResponseEntity<ApiError> =
+        errorResponse(
+            status = HttpStatus.NOT_FOUND,
+            code = "BET_NOT_FOUND",
+            message = exception.message ?: "Bet was not found",
+            request = request,
+        )
+
     @ExceptionHandler(GameNotFoundException::class)
     fun handleGameNotFound(
         exception: GameNotFoundException,

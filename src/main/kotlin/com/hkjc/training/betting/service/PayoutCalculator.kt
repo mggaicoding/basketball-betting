@@ -2,6 +2,7 @@ package com.hkjc.training.betting.service
 
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
+import java.math.RoundingMode
 
 /**
  * What a customer stands to win.
@@ -28,5 +29,18 @@ class PayoutCalculator {
     fun potentialPayout(
         stake: BigDecimal,
         odds: BigDecimal,
-    ): BigDecimal = TODO("Demo 1: implement from the comment above")
+    ): BigDecimal {
+        require(stake > BigDecimal.ZERO) { "stake must be greater than zero but was $stake" }
+        require(odds > BigDecimal.ZERO) { "odds must be greater than zero but was $odds" }
+
+        // Round first: the cap is a promise about the amount the customer is shown.
+        val payout = (stake * odds).setScale(SCALE, RoundingMode.HALF_UP)
+        require(payout <= MAX_PAYOUT) { "payout $payout exceeds the maximum of $MAX_PAYOUT" }
+        return payout
+    }
+
+    private companion object {
+        private const val SCALE = 2
+        private val MAX_PAYOUT = BigDecimal("1000000")
+    }
 }

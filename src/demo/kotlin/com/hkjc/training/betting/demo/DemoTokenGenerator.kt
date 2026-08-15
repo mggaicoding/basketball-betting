@@ -12,8 +12,9 @@ import java.util.Date
 fun main() {
     println("VALID_NO_SCOPE_TOKEN=${token(scope = "")}")
     println("VALID_GAMES_READ_TOKEN=${token(scope = "games:read")}")
+    println("VALID_BETS_READ_TOKEN=${token(scope = "bets:read")}")
     println("VALID_BETS_WRITE_TOKEN=${token(scope = "bets:write")}")
-    println("VALID_MOBILE_TOKEN=${token(scope = "games:read bets:write")}")
+    println("VALID_MOBILE_TOKEN=${token(scope = "games:read bets:read bets:write")}")
 }
 
 private fun token(scope: String): String {

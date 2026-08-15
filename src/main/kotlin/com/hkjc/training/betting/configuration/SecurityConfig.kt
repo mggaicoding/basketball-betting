@@ -68,6 +68,8 @@ private fun AuthorizeHttpRequestsRegistry.applyScopeRules() {
         .permitAll()
         .requestMatchers(HttpMethod.GET, "/api/v1/games/**")
         .hasAuthority("SCOPE_games:read")
+        .requestMatchers(HttpMethod.GET, "/api/v1/bets/**")
+        .hasAuthority("SCOPE_bets:read")
         .requestMatchers(HttpMethod.POST, "/api/v1/bets")
         .hasAuthority("SCOPE_bets:write")
         .anyRequest()

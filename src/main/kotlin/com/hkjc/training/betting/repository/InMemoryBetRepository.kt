@@ -18,4 +18,6 @@ class InMemoryBetRepository : BetRepository {
         bets[stored.id] = stored
         return stored
     }
+
+    override fun findById(betId: String): Bet? = bets[betId]
 }
