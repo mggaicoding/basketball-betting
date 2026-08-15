@@ -21,6 +21,9 @@
 #
 #   * macOS (Apple Silicon), JDK 17, Gradle wrapper. Cold first build ~3 min;
 #     Solace first start ~40 s. Both are expected, not failures.
+#     Java comes from asdf on this machine; if no java version is selected for
+#     the repo, the script exports ASDF_JAVA_VERSION=openjdk-17 (installed).
+#     On machines without asdf it simply uses whatever `java` is on PATH.
 #   * Docker runs in colima. If DOCKER_HOST is unset and
 #     ~/.colima/default/docker.sock exists, this script exports
 #         DOCKER_HOST=unix://$HOME/.colima/default/docker.sock
@@ -127,6 +130,17 @@ wait_port() { # port, timeout
 	local port=$1 timeout=$2 elapsed=0
 	while (( elapsed < timeout )); do
 		port_open "$port" && return 0
+		sleep 2; elapsed=$((elapsed + 2))
+	done
+	return 1
+}
+
+# wait_port that also gives up when the launching process has died
+wait_port_proc() { # port, timeout, pid
+	local port=$1 timeout=$2 pid=$3 elapsed=0
+	while (( elapsed < timeout )); do
+		port_open "$port" && return 0
+		kill -0 "$pid" 2>/dev/null || return 1
 		sleep 2; elapsed=$((elapsed + 2))
 	done
 	return 1
@@ -253,7 +267,7 @@ ensure_downstreams() {
 	: >"$DOWNSTREAM_LOG"
 	./gradlew runDemoDownstreams >"$DOWNSTREAM_LOG" 2>&1 &
 	DOWNSTREAM_PID=$!
-	if wait_port 8091 "$BOOT_TIMEOUT" && wait_port 8092 60; then
+	if wait_port_proc 8091 "$BOOT_TIMEOUT" "$DOWNSTREAM_PID" && wait_port_proc 8092 60 "$DOWNSTREAM_PID"; then
 		info "downstream stubs are up"
 		return 0
 	fi
@@ -276,6 +290,22 @@ load_tokens() {
 		return 1
 	fi
 	TOKENS_LOADED=1
+}
+
+# ---------------------------------------------------------------------------
+# java (asdf on the instructor's machine; plain PATH elsewhere)
+# ---------------------------------------------------------------------------
+setup_java() {
+	if java -version >/dev/null 2>&1; then
+		return 0
+	fi
+	if command -v asdf >/dev/null 2>&1 && asdf list java 2>/dev/null | grep -q 'openjdk-17'; then
+		export ASDF_JAVA_VERSION=openjdk-17
+		info "no java version selected; exported ASDF_JAVA_VERSION=openjdk-17 (asdf)"
+		java -version >/dev/null 2>&1 && return 0
+	fi
+	warn "no working java found; the demos need JDK 17 (docs/demo-be.md assumes OpenJDK 17 via asdf)"
+	return 1
 }
 
 # ---------------------------------------------------------------------------
@@ -452,6 +482,8 @@ on_exit() {
 	exit "$rc"
 }
 trap on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # ---------------------------------------------------------------------------
 # HTTP helpers
@@ -1134,6 +1166,11 @@ log "auto-demo: running scenarios: ${DEMOS[*]}"
 log "auto-demo: repo=$REPO original-ref=$ORIG_REF logs=$RUN_DIR"
 
 # environment preflight
+if ! setup_java; then
+	record "preflight java" "FAIL" "no JDK 17 available; nothing can build or boot without it"
+	print_table
+	exit 1
+fi
 setup_docker_env || warn "docker compose not found; demos needing postgres/solace will FAIL"
 if want 7 || want 8 || want 9; then
 	detect_pg_shadow && apply_pg_workaround
