@@ -808,7 +808,8 @@ demo4_3() {
 	need_branch demo-4 || { record "demo-4.3" "FAIL" "could not check out demo-4"; return; }
 	stop_app; stop_downstreams
 	rm -rf build/pacts   # generated output; the doc's point is that it appears only now
-	./gradlew contractTest >"$RUN_DIR/demo43.log" 2>&1
+	# --rerun-tasks: an UP-TO-DATE skip would leave the deleted pacts missing
+	./gradlew contractTest --rerun-tasks >"$RUN_DIR/demo43.log" 2>&1
 	local pacts
 	pacts="$(find build/pacts -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
 	if grep -q 'BUILD SUCCESSFUL' "$RUN_DIR/demo43.log" && [[ $pacts -ge 1 ]]; then
@@ -1057,7 +1058,7 @@ demo8() {
 		split_code_body "$(place_bet_secured "G-100" "HOME" 100)"
 		local rows
 		rows="$(psql_in_container "select count(*) from bet")"
-		if [[ $CODE == "201" ]] && grep -q '1 profile is active: database' "$APP_LOG" \
+		if [[ $CODE == "201" ]] && grep -qE 'following 1 profile is active:.*database' "$APP_LOG" \
 			&& [[ $rows =~ ^[0-9]+$ ]] && (( rows >= 1 )); then
 			record "demo-8 boot database" "PASS" "201; '1 profile is active: database'; bet row in Postgres (count=$rows)"
 		else
@@ -1073,7 +1074,7 @@ demo8() {
 		split_code_body "$(place_bet_secured "G-100" "HOME" 100)"
 		local notified="no"
 		wait_log "$APP_LOG" 'solace-scst-consumer-[^ ]*.*event notified' "$CONSUMER_TIMEOUT" && notified="yes"
-		if [[ $CODE == "201" ]] && grep -q '2 profiles are active: database, solace' "$APP_LOG" \
+		if [[ $CODE == "201" ]] && grep -qE 'following 2 profiles are active:.*database.*solace' "$APP_LOG" \
 			&& [[ $notified == "yes" ]]; then
 			record "demo-8 boot database,solace" "PASS" "201; both profiles active; event consumed from the broker queue"
 		else
